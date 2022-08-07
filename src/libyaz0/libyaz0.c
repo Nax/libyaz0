@@ -20,6 +20,13 @@ int yaz0Input(Yaz0Stream* stream, const void* data, size_t size)
     stream->in = data;
     stream->sizeIn = size;
     stream->cursorIn = 0;
+
+    for (int i = 0; i < HASH_MAX_ENTRIES; ++i)
+    {
+        stream->htHashes[i]  = 0xffffffff;
+        stream->htEntries[i] = 0xffffffff;
+    }
+
     return YAZ0_OK;
 }
 

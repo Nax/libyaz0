@@ -7,6 +7,8 @@
 #define WINDOW_SIZE             0x2000
 #define FLAG_COMPRESS           (1 << 0)
 #define FLAG_HEADERS_PARSED     (1 << 1)
+#define HASH_MAX_ENTRIES        0x1000
+#define HASH_MAX_PROBES         0x20
 
 struct Yaz0Stream
 {
@@ -27,6 +29,8 @@ struct Yaz0Stream
     uint32_t        window_start;
     uint32_t        window_end;
     uint8_t         window[WINDOW_SIZE];
+    uint32_t        htHashes[HASH_MAX_ENTRIES];
+    uint32_t        htEntries[HASH_MAX_ENTRIES];
 };
 
 int yaz0_Init(Yaz0Stream** stream);

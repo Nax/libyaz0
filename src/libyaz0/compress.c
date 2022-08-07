@@ -2,6 +2,56 @@
 #include <stdio.h>
 #include "libyaz0.h"
 
+static uint32_t hash(uint8_t a, uint8_t b, uint8_t c)
+{
+    uint32_t x = (uint32_t)a | ((uint32_t)b << 8) | ((uint32_t)c << 16);
+    x = ((x >> 16) ^ x) * 0x45d9f3b;
+    x = ((x >> 16) ^ x) * 0x45d9f3b;
+    x = (x >> 16) ^ x;
+    return x;
+}
+
+static uint32_t hashAt(Yaz0Stream* s, uint32_t offset)
+{
+    uint8_t a;
+    uint8_t b;
+    uint8_t c;
+    uint32_t start;
+
+    start = s->window_start + offset;
+    a = s->window[(start + 0) % WINDOW_SIZE];
+    b = s->window[(start + 1) % WINDOW_SIZE];
+    c = s->window[(start + 2) % WINDOW_SIZE];
+    return hash(a, b, c);
+}
+
+static void hashWrite(Yaz0Stream* s, uint32_t h)
+{
+    uint32_t bucket;
+    uint32_t tmpBucket;
+    uint32_t oldest;
+    uint32_t entry;
+
+    oldest = 0xffffffff;
+    for (int i = 0; i < HASH_MAX_PROBES; ++i)
+    {
+        tmpBucket = (h + i) % HASH_MAX_ENTRIES;
+        entry = s->htEntries[tmpBucket];
+        if (entry == 0xffffffff)
+        {
+            bucket = tmpBucket;
+            break;
+        }
+        if (entry < oldest)
+        {
+            oldest = entry;
+            bucket = tmpBucket;
+        }
+    }
+    s->htEntries[bucket] = s->totalOut;
+    s->htHashes[bucket] = h;
+}
+
 static uint32_t maxSize(Yaz0Stream* stream)
 {
     uint32_t max;
@@ -80,43 +130,46 @@ static int matchSize(Yaz0Stream* s, int pos)
     return size;
 }
 
-static void findBestMatch(Yaz0Stream* s, int* size, int* pos)
+static void findHashMatch(Yaz0Stream* s, uint32_t h, uint32_t* outSize, uint32_t* outPos)
 {
-    int bestSize;
-    int bestPos;
+    uint32_t bucket;
+    uint32_t entry;
+    uint32_t bestSize;
+    uint32_t bestPos;
+    uint32_t size;
+    uint32_t pos;
 
     bestSize = 0;
-
-    for (int i = 0x1000; i > 0; --i)
+    bestPos = 0;
+    for (int i = 0; i < HASH_MAX_PROBES; ++i)
     {
-        int tmpSize = matchSize(s, i);
-        if (tmpSize < 3)
-            continue;
-        if (tmpSize > bestSize)
+        bucket = (h + i) % HASH_MAX_ENTRIES;
+        entry = s->htEntries[bucket];
+        if (entry == 0xffffffff)
+            break;
+        if (s->htHashes[bucket] == h)
         {
-            bestSize = tmpSize;
-            bestPos = i;
+            pos = s->totalOut - entry;
+            if (pos > 0x1000)
+                continue;
+            size = matchSize(s, pos);
+            if (size > bestSize)
+            {
+                bestSize = size;
+                bestPos = pos;
+            }
         }
-        i -= (tmpSize - 1);
     }
-
-    if (bestSize)
+    if (bestSize < 3)
     {
-        *size = bestSize;
-        *pos = bestPos;
-        s->window_start = (s->window_start + bestSize) % WINDOW_SIZE;
-        s->totalOut += bestSize;
+        bestSize = 0;
+        bestPos = s->window[s->window_start];
     }
-    else
-    {
-        *size = 0;
-        *pos = (uint8_t)s->window[s->window_start++];
-        s->window_start %= WINDOW_SIZE;
-        s->totalOut++;
-    }
+    *outSize = bestSize;
+    *outPos = bestPos;
 }
 
-static void emitGroup(Yaz0Stream* s, int count, const int* arrSize, const int* arrPos)
+static void emitGroup(Yaz0Stream* s, int count, const uint32_t* arrSize, const uint32_t* arrPos)
 {
     uint8_t header;
     int size;
@@ -158,12 +211,30 @@ static void emitGroup(Yaz0Stream* s, int count, const int* arrSize, const int* a
 static void compressGroup(Yaz0Stream* s)
 {
     int groupCount;
-    int arrSize[8];
-    int arrPos[8];
+    uint32_t h;
+    uint32_t size;
+    uint32_t pos;
+    uint32_t arrSize[8];
+    uint32_t arrPos[8];
 
     for (groupCount = 0; groupCount < 8; ++groupCount)
     {
-        findBestMatch(s, &arrSize[groupCount], &arrPos[groupCount]);
+        h = hashAt(s, 0);
+        findHashMatch(s, h, &size, &pos);
+        hashWrite(s, h);
+        arrSize[groupCount] = size;
+        arrPos[groupCount] = pos;
+        if (!size)
+        {
+            s->window_start += 1;
+            s->totalOut += 1;
+        }
+        else
+        {
+            s->window_start += size;
+            s->totalOut += size;
+        }
+        s->window_start %= WINDOW_SIZE;
         if (s->totalOut >= s->decompSize)
         {
             groupCount++;
