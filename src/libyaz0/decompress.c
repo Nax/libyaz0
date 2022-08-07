@@ -20,40 +20,35 @@ void loadAux(Yaz0Stream* stream, int size)
         stream->auxBuf[stream->auxSize++] = stream->in[stream->cursorIn++];
 }
 
-static uint32_t swap32(uint32_t in)
-{
-    return ((in & 0xFF) << 24) | ((in & 0xFF00) << 8) | ((in & 0xFF0000) >> 8) | ((in & 0xFF000000) >> 24);
-}
-
 int flush(Yaz0Stream* stream)
 {
     size_t chunkSize;
     size_t outSize;
 
-    if (stream->window_cursor_read == stream->window_cursor_write)
+    if (stream->window_start == stream->window_end)
         return YAZ0_OK;
     if (stream->cursorOut >= stream->sizeOut)
         return YAZ0_NEED_AVAIL_OUT;
     outSize = stream->sizeOut - stream->cursorOut;
-    if (stream->window_cursor_read > stream->window_cursor_write)
+    if (stream->window_start > stream->window_end)
     {
         /* Wrap around - we will need 2 copies */
-        chunkSize = WINDOW_SIZE - stream->window_cursor_read;
+        chunkSize = WINDOW_SIZE - stream->window_start;
         if (chunkSize > outSize)
             chunkSize = outSize;
-        memcpy(stream->out + stream->cursorOut, stream->window + stream->window_cursor_read, chunkSize);
+        memcpy(stream->out + stream->cursorOut, stream->window + stream->window_start, chunkSize);
         stream->cursorOut += chunkSize;
-        stream->window_cursor_read += chunkSize;
-        stream->window_cursor_read %= WINDOW_SIZE;
+        stream->window_start += chunkSize;
+        stream->window_start %= WINDOW_SIZE;
         outSize -= chunkSize;
     }
     /* Copy the rest */
-    chunkSize = stream->window_cursor_write - stream->window_cursor_read;
+    chunkSize = stream->window_end - stream->window_start;
     if (chunkSize > outSize)
         chunkSize = outSize;
-    memcpy(stream->out + stream->cursorOut, stream->window + stream->window_cursor_read, chunkSize);
+    memcpy(stream->out + stream->cursorOut, stream->window + stream->window_start, chunkSize);
     stream->cursorOut += chunkSize;
-    stream->window_cursor_read += chunkSize;
+    stream->window_start += chunkSize;
     return YAZ0_OK;
 }
 
@@ -72,10 +67,10 @@ static int yaz0_ReadHeaders(Yaz0Stream* stream)
 static int windowFreeSize(Yaz0Stream* stream)
 {
     int size;
-    if (stream->window_cursor_read > stream->window_cursor_write)
-        size = WINDOW_SIZE - stream->window_cursor_read + stream->window_cursor_write;
+    if (stream->window_start > stream->window_end)
+        size = WINDOW_SIZE - stream->window_start + stream->window_end;
     else
-        size = stream->window_cursor_write - stream->window_cursor_read;
+        size = stream->window_end - stream->window_start;
     return WINDOW_SIZE - size;
 }
 
@@ -127,8 +122,8 @@ int yaz0_DoDecompress(Yaz0Stream* stream)
 
                 /* Everything ok, copy the byte */
                 byte = stream->in[stream->cursorIn++];
-                stream->window[stream->window_cursor_write++] = byte;
-                stream->window_cursor_write %= WINDOW_SIZE;
+                stream->window[stream->window_end++] = byte;
+                stream->window_end %= WINDOW_SIZE;
                 stream->totalOut++;
             }
             else
@@ -157,11 +152,11 @@ int yaz0_DoDecompress(Yaz0Stream* stream)
                 r = ((uint16_t)((uint8_t)stream->auxBuf[0] & 0x0f) << 8) | ((uint8_t)stream->auxBuf[1]);
                 r++;
                 /* Reset the aux buffer */
-                uint32_t cursor = (stream->window_cursor_write + WINDOW_SIZE - r) % WINDOW_SIZE;
+                uint32_t cursor = (stream->window_end + WINDOW_SIZE - r) % WINDOW_SIZE;
                 for (int i = 0; i < n; ++i)
                 {
-                    stream->window[stream->window_cursor_write++] = stream->window[cursor++];
-                    stream->window_cursor_write %= WINDOW_SIZE;
+                    stream->window[stream->window_end++] = stream->window[cursor++];
+                    stream->window_end %= WINDOW_SIZE;
                     cursor %= WINDOW_SIZE;
                 }
                 stream->auxSize = 0;
@@ -198,7 +193,7 @@ int yaz0_RunDecompress(Yaz0Stream* stream)
 
     /* We did decompress everything */
     flush(stream);
-    if (stream->window_cursor_read != stream->window_cursor_write)
+    if (stream->window_start != stream->window_end)
         return YAZ0_NEED_AVAIL_OUT;
     return YAZ0_OK;
 }

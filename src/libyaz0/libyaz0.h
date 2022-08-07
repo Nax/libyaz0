@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <yaz0.h>
 
-#define WINDOW_SIZE             0x4000
+#define WINDOW_SIZE             0x2000
 #define FLAG_COMPRESS           (1 << 0)
 #define FLAG_HEADERS_PARSED     (1 << 1)
 
@@ -24,12 +24,15 @@ struct Yaz0Stream
     uint8_t     auxSize;
     uint8_t     groupHeader;
     uint8_t     groupCount;
-    int         window_cursor_read;
-    int         window_cursor_write;
+    uint32_t    window_start;
+    uint32_t    window_end;
     char        window[WINDOW_SIZE];
 };
 
 int yaz0_Init(Yaz0Stream** stream);
 int yaz0_RunDecompress(Yaz0Stream* stream);
+int yaz0_RunCompress(Yaz0Stream* stream);
+
+uint32_t swap32(uint32_t v);
 
 #endif /* LIBYAZ0_H */

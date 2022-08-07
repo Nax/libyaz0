@@ -2,6 +2,7 @@
 #define YAZ0_H
 
 #include <stddef.h>
+#include <stdint.h>
 
 #define YAZ0_OK             0
 #define YAZ0_NEED_AVAIL_IN  1
@@ -12,6 +13,7 @@
 typedef struct Yaz0Stream Yaz0Stream;
 
 int yaz0InitDecompress(Yaz0Stream** stream);
+int yaz0InitCompress(Yaz0Stream** stream, uint32_t size);
 int yaz0Destroy(Yaz0Stream* stream);
 int yaz0Run(Yaz0Stream* stream);
 int yaz0Input(Yaz0Stream* stream, const void* data, size_t size);

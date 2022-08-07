@@ -10,7 +10,7 @@ int yaz0Destroy(Yaz0Stream* stream)
 int yaz0Run(Yaz0Stream* stream)
 {
     if (stream->flags & FLAG_COMPRESS)
-        return 0;
+        return yaz0_RunCompress(stream);
     else
         return yaz0_RunDecompress(stream);
 }
