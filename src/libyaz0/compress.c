@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "libyaz0.h"
 
-static int maxSize(Yaz0Stream* stream)
+static uint32_t maxSize(Yaz0Stream* stream)
 {
     uint32_t max;
     max = stream->decompSize - stream->totalOut;
@@ -17,10 +17,10 @@ static int maxSize(Yaz0Stream* stream)
 
 static int feed(Yaz0Stream* s)
 {
-    size_t avail;
-    size_t min;
-    size_t max;
-    size_t size;
+    uint32_t avail;
+    uint32_t min;
+    uint32_t max;
+    uint32_t size;
     int ret;
 
     /* Check how much data we have */
@@ -57,7 +57,7 @@ static int feed(Yaz0Stream* s)
 
 static int matchSize(Yaz0Stream* s, int pos)
 {
-    int size = 0;
+    uint32_t size = 0;
     uint32_t cursorA = (s->window_start + WINDOW_SIZE - pos) % WINDOW_SIZE;
     uint32_t cursorB = s->window_start;
     uint32_t maxSize;
@@ -86,6 +86,7 @@ static void findBestMatch(Yaz0Stream* s, int* size, int* pos)
     int bestPos;
 
     bestSize = 0;
+
     for (int i = 0x1000; i > 0; --i)
     {
         int tmpSize = matchSize(s, i);

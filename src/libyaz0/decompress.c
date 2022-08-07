@@ -12,11 +12,11 @@ int yaz0InitDecompress(Yaz0Stream** stream)
     return YAZ0_OK;
 }
 
-void loadAux(Yaz0Stream* stream, int size)
+void loadAux(Yaz0Stream* stream, uint32_t size)
 {
     if (stream->sizeIn - stream->cursorIn < size)
         size = stream->sizeIn - stream->cursorIn;
-    for (int i = 0; i < size; i++)
+    for (uint32_t i = 0; i < size; i++)
         stream->auxBuf[stream->auxSize++] = stream->in[stream->cursorIn++];
 }
 
@@ -57,16 +57,16 @@ static int yaz0_ReadHeaders(Yaz0Stream* stream)
     loadAux(stream, 16 - stream->auxSize);
     if (stream->auxSize < 16)
         return YAZ0_NEED_AVAIL_IN;
-    if (strcmp(stream->auxBuf, "Yaz0"))
+    if (memcmp(stream->auxBuf, "Yaz0", 4))
         return YAZ0_BAD_MAGIC;
     stream->decompSize = swap32(*(uint32_t*)&stream->auxBuf[4]);
     stream->auxSize = 0;
     return YAZ0_OK;
 }
 
-static int windowFreeSize(Yaz0Stream* stream)
+static uint32_t windowFreeSize(Yaz0Stream* stream)
 {
-    int size;
+    uint32_t size;
     if (stream->window_start > stream->window_end)
         size = WINDOW_SIZE - stream->window_start + stream->window_end;
     else
@@ -77,6 +77,7 @@ static int windowFreeSize(Yaz0Stream* stream)
 static int ensureWindowFree(Yaz0Stream* stream)
 {
     static const uint32_t maxSize = 0x111 * 8;
+
     if (windowFreeSize(stream) < maxSize)
     {
         flush(stream);

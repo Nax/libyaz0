@@ -10,23 +10,23 @@
 
 struct Yaz0Stream
 {
-    int         flags;
-    int         level;
-    uint32_t    decompSize;
-    uint32_t    totalOut;
-    const char* in;
-    char*       out;
-    size_t      sizeIn;
-    size_t      sizeOut;
-    size_t      cursorIn;
-    size_t      cursorOut;
-    char        auxBuf[16];
-    uint8_t     auxSize;
-    uint8_t     groupHeader;
-    uint8_t     groupCount;
-    uint32_t    window_start;
-    uint32_t    window_end;
-    char        window[WINDOW_SIZE];
+    int             flags;
+    int             level;
+    uint32_t        decompSize;
+    uint32_t        totalOut;
+    const uint8_t*  in;
+    uint8_t*        out;
+    uint32_t        sizeIn;
+    uint32_t        sizeOut;
+    uint32_t        cursorIn;
+    uint32_t        cursorOut;
+    uint8_t         auxBuf[16];
+    uint8_t         auxSize;
+    uint8_t         groupHeader;
+    uint8_t         groupCount;
+    uint32_t        window_start;
+    uint32_t        window_end;
+    uint8_t         window[WINDOW_SIZE];
 };
 
 int yaz0_Init(Yaz0Stream** stream);
