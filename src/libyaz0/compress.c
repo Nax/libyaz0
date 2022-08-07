@@ -55,12 +55,64 @@ static int feed(Yaz0Stream* s)
     return ret;
 }
 
+static int matchSize(Yaz0Stream* s, int pos)
+{
+    int size = 0;
+    uint32_t cursorA = (s->window_start + WINDOW_SIZE - pos) % WINDOW_SIZE;
+    uint32_t cursorB = s->window_start;
+    uint32_t maxSize;
+
+    maxSize = s->decompSize - s->totalOut;
+    if (maxSize > 0x111)
+        maxSize = 0x111;
+    for (;;)
+    {
+        if (s->window[cursorA] != s->window[cursorB])
+            break;
+        size++;
+        if (size == maxSize)
+            break;
+        cursorA++;
+        cursorB++;
+        cursorA %= WINDOW_SIZE;
+        cursorB %= WINDOW_SIZE;
+    }
+    return size;
+}
+
 static void findBestMatch(Yaz0Stream* s, int* size, int* pos)
 {
-    *size = 0;
-    *pos = (uint8_t)s->window[s->window_start++];
-    s->window_start %= WINDOW_SIZE;
-    s->totalOut++;
+    int bestSize;
+    int bestPos;
+
+    bestSize = 0;
+    for (int i = 0x1000; i > 0; --i)
+    {
+        int tmpSize = matchSize(s, i);
+        if (tmpSize < 3)
+            continue;
+        if (tmpSize > bestSize)
+        {
+            bestSize = tmpSize;
+            bestPos = i;
+        }
+        i -= (tmpSize - 1);
+    }
+
+    if (bestSize)
+    {
+        *size = bestSize;
+        *pos = bestPos;
+        s->window_start = (s->window_start + bestSize) % WINDOW_SIZE;
+        s->totalOut += bestSize;
+    }
+    else
+    {
+        *size = 0;
+        *pos = (uint8_t)s->window[s->window_start++];
+        s->window_start %= WINDOW_SIZE;
+        s->totalOut++;
+    }
 }
 
 static void emitGroup(Yaz0Stream* s, int count, const int* arrSize, const int* arrPos)
