@@ -176,12 +176,12 @@ int yaz0_RunDecompress(Yaz0Stream* stream)
     int ret;
 
     /* Check the headers */
-    if (!(stream->flags & FLAG_HEADERS_PARSED))
+    if (!(stream->flags & FLAG_HEADERS))
     {
         ret = yaz0_ReadHeaders(stream);
         if (ret)
             return ret;
-        stream->flags |= FLAG_HEADERS_PARSED;
+        stream->flags |= FLAG_HEADERS;
     }
 
     if (stream->totalOut < stream->decompSize)
