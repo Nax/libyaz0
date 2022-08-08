@@ -58,6 +58,51 @@ static void hashWrite(Yaz0Stream* s, uint32_t h, uint32_t offset)
     s->htHashes[bucket] = h;
 }
 
+static uint32_t rebuildHashTable(Yaz0Stream* s)
+{
+    uint32_t newEntries[HASH_MAX_ENTRIES];
+    uint32_t newHashes[HASH_MAX_ENTRIES];
+    uint32_t entry;
+    uint32_t pos;
+    uint32_t h;
+    uint32_t bucket;
+    uint32_t size;
+
+    memset(newEntries, 0xff, sizeof(newEntries));
+    memset(newHashes, 0xff, sizeof(newHashes));
+    size = 0;
+
+    for (uint32_t i = 0; i < HASH_MAX_ENTRIES; ++i)
+    {
+        entry = s->htEntries[i];
+        if (entry == 0xffffffff)
+            continue;
+        pos = s->totalOut - entry;
+        if (pos > 0x1000)
+            continue;
+
+        /* Entry still good - move to the table */
+        h = s->htHashes[i];
+        bucket = h % HASH_MAX_ENTRIES;
+        for (;;)
+        {
+            if (newEntries[bucket] == 0xffffffff)
+            {
+                newEntries[bucket] = entry;
+                newHashes[bucket] = h;
+                size++;
+                break;
+            }
+            bucket = (bucket + 1) % HASH_MAX_ENTRIES;
+        }
+    }
+
+    memcpy(s->htEntries, newEntries, sizeof(newEntries));
+    memcpy(s->htHashes, newHashes, sizeof(newHashes));
+
+    return size;
+}
+
 static uint32_t maxSize(Yaz0Stream* stream)
 {
     uint32_t max;
@@ -240,12 +285,15 @@ static void compressGroup(Yaz0Stream* s)
         h1 = hashAt(s, 1);
         findHashMatch(s, h1, 1, &nextSize, &nextPos);
 
-        if (!size || nextSize > size + 1)
+        if (!size || nextSize > size + 1 + s->predictionDepth * 2)
         {
+            if (size)
+                s->predictionDepth++;
             arrSize[groupCount] = 0;
             arrPos[groupCount] = s->window[s->window_start];
             s->window_start += 1;
             s->totalOut += 1;
+            s->htSize++;
         }
         else
         {
@@ -258,6 +306,8 @@ static void compressGroup(Yaz0Stream* s)
             }
             s->window_start += size;
             s->totalOut += size;
+            s->predictionDepth = 0;
+            s->htSize += size;
         }
         s->window_start %= WINDOW_SIZE;
         if (s->totalOut >= s->decompSize)
@@ -265,6 +315,10 @@ static void compressGroup(Yaz0Stream* s)
             groupCount++;
             break;
         }
+    }
+    if (s->htSize > HASH_REBUILD)
+    {
+        s->htSize = rebuildHashTable(s);
     }
     emitGroup(s, groupCount, arrSize, arrPos);
 }
