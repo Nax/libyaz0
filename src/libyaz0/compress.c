@@ -171,15 +171,11 @@ static int matchSize(Yaz0Stream* s, uint32_t offset, uint32_t pos, uint32_t hint
     }
     for (;;)
     {
-        if (s->window[cursorA] != s->window[cursorB])
+        if (s->window[(cursorA + size) % WINDOW_SIZE] != s->window[(cursorB + size) % WINDOW_SIZE])
             break;
         size++;
         if (size == maxSize)
             break;
-        cursorA++;
-        cursorB++;
-        cursorA %= WINDOW_SIZE;
-        cursorB %= WINDOW_SIZE;
     }
     return size;
 }
