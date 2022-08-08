@@ -62,8 +62,8 @@ static uint32_t maxSize(Yaz0Stream* stream)
 {
     uint32_t max;
     max = stream->decompSize - stream->totalOut;
-    if (max > 0x2000)
-        max = 0x2000;
+    if (max > 0x888)
+        max = 0x888;
     return (int)max;
 }
 
@@ -137,7 +137,7 @@ static int matchSize(Yaz0Stream* s, uint32_t pos)
     return size;
 }
 
-static void findHashMatch(Yaz0Stream* s, uint32_t h, uint32_t* outSize, uint32_t* outPos)
+static void findHashMatch(Yaz0Stream* s, uint32_t h, uint32_t offset, uint32_t* outSize, uint32_t* outPos)
 {
     uint32_t bucket;
     uint32_t entry;
@@ -156,7 +156,7 @@ static void findHashMatch(Yaz0Stream* s, uint32_t h, uint32_t* outSize, uint32_t
             break;
         if (s->htHashes[bucket] == h)
         {
-            pos = s->totalOut - entry;
+            pos = s->totalOut + offset - entry;
             if (pos > 0x1000)
                 continue;
             size = matchSize(s, pos);
@@ -171,15 +171,14 @@ static void findHashMatch(Yaz0Stream* s, uint32_t h, uint32_t* outSize, uint32_t
     //printf("BS 0x%04x\n", bestSize);
     if (bestSize < 3)
     {
-        bestSize = 0;
-        bestPos = s->window[s->window_start];
+        *outSize = 0;
     }
     else
     {
+        *outSize = bestSize;
+        *outPos = bestPos;
         //printf("O:0x%08x S:0x%04x P:0x%04x\n", s->totalOut, bestSize, bestPos);
     }
-    *outSize = bestSize;
-    *outPos = bestPos;
 }
 
 static void emitGroup(Yaz0Stream* s, int count, const uint32_t* arrSize, const uint32_t* arrPos)
@@ -225,25 +224,33 @@ static void compressGroup(Yaz0Stream* s)
 {
     int groupCount;
     uint32_t h;
+    uint32_t h1;
     uint32_t size;
     uint32_t pos;
+    uint32_t nextSize;
+    uint32_t nextPos;
     uint32_t arrSize[8];
     uint32_t arrPos[8];
 
     for (groupCount = 0; groupCount < 8; ++groupCount)
     {
         h = hashAt(s, 0);
-        findHashMatch(s, h, &size, &pos);
+        findHashMatch(s, h, 0, &size, &pos);
         hashWrite(s, h, 0);
-        arrSize[groupCount] = size;
-        arrPos[groupCount] = pos;
-        if (!size)
+        h1 = hashAt(s, 1);
+        findHashMatch(s, h1, 1, &nextSize, &nextPos);
+
+        if (!size || nextSize > size + 1)
         {
+            arrSize[groupCount] = 0;
+            arrPos[groupCount] = s->window[s->window_start];
             s->window_start += 1;
             s->totalOut += 1;
         }
         else
         {
+            arrSize[groupCount] = size;
+            arrPos[groupCount] = pos;
             for (uint32_t i = 1; i < size; ++i)
             {
                 h = hashAt(s, i);
