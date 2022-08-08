@@ -6,7 +6,7 @@ static uint32_t hash(uint8_t a, uint8_t b, uint8_t c)
 {
     uint32_t x = (uint32_t)a | ((uint32_t)b << 8) | ((uint32_t)c << 16);
     x = ((x >> 16) ^ x) * 0x45d9f3b;
-    x = ((x >> 16) ^ x) * 0x45d9f3b;
+    //x = ((x >> 16) ^ x) * 0x45d9f3b;
     x = (x >> 16) ^ x;
     return x;
 }
@@ -153,7 +153,7 @@ static int feed(Yaz0Stream* s)
     return ret;
 }
 
-static int matchSize(Yaz0Stream* s, uint32_t offset, uint32_t pos)
+static int matchSize(Yaz0Stream* s, uint32_t offset, uint32_t pos, uint32_t hintSize)
 {
     uint32_t size = 0;
     uint32_t start = s->window_start + offset;
@@ -164,6 +164,11 @@ static int matchSize(Yaz0Stream* s, uint32_t offset, uint32_t pos)
     maxSize = s->decompSize - s->totalOut;
     if (maxSize > 0x111)
         maxSize = 0x111;
+    if (hintSize)
+    {
+        if (s->window[(cursorA + hintSize) % WINDOW_SIZE] != s->window[(cursorB + hintSize) % WINDOW_SIZE])
+            return 0;
+    }
     for (;;)
     {
         if (s->window[cursorA] != s->window[cursorB])
@@ -201,7 +206,7 @@ static void findHashMatch(Yaz0Stream* s, uint32_t h, uint32_t offset, uint32_t* 
             pos = s->totalOut + offset - entry;
             if (pos > 0x1000)
                 continue;
-            size = matchSize(s, offset, pos);
+            size = matchSize(s, offset, pos, bestSize);
             if (size > bestSize)
             {
                 bestSize = size;
@@ -231,7 +236,7 @@ static void findEarlyZeroes(Yaz0Stream* s, uint32_t* outSize, uint32_t* outPos)
     bestPos = 0;
     for (uint32_t pos = 0x1000; pos > 0x990; --pos)
     {
-        size = matchSize(s, 0, pos);
+        size = matchSize(s, 0, pos, 0);
         if (size > bestSize)
         {
             bestSize = size;
