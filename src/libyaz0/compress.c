@@ -25,7 +25,7 @@ static uint32_t hashAt(Yaz0Stream* s, uint32_t offset)
     return hash(a, b, c);
 }
 
-static void hashWrite(Yaz0Stream* s, uint32_t h)
+static void hashWrite(Yaz0Stream* s, uint32_t h, uint32_t offset)
 {
     uint32_t bucket;
     uint32_t tmpBucket;
@@ -37,6 +37,7 @@ static void hashWrite(Yaz0Stream* s, uint32_t h)
     {
         tmpBucket = (h + i) % HASH_MAX_ENTRIES;
         entry = s->htEntries[tmpBucket];
+        //printf("ENTRY: 0x%04x\n", entry);
         if (entry == 0xffffffff)
         {
             bucket = tmpBucket;
@@ -48,7 +49,12 @@ static void hashWrite(Yaz0Stream* s, uint32_t h)
             bucket = tmpBucket;
         }
     }
-    s->htEntries[bucket] = s->totalOut;
+    if (entry != 0xffffffff)
+    {
+        //printf("Evicted oldest\n");
+    }
+    //printf("BUCKET: 0x%04x ENTRY: 0x%08x NEW: 0x%08x\n", bucket, entry, s->totalOut + offset);
+    s->htEntries[bucket] = s->totalOut + offset;
     s->htHashes[bucket] = h;
 }
 
@@ -56,8 +62,8 @@ static uint32_t maxSize(Yaz0Stream* stream)
 {
     uint32_t max;
     max = stream->decompSize - stream->totalOut;
-    if (max > 0x888)
-        max = 0x888;
+    if (max > 0x2000)
+        max = 0x2000;
     return (int)max;
 }
 
@@ -105,7 +111,7 @@ static int feed(Yaz0Stream* s)
     return ret;
 }
 
-static int matchSize(Yaz0Stream* s, int pos)
+static int matchSize(Yaz0Stream* s, uint32_t pos)
 {
     uint32_t size = 0;
     uint32_t cursorA = (s->window_start + WINDOW_SIZE - pos) % WINDOW_SIZE;
@@ -127,6 +133,7 @@ static int matchSize(Yaz0Stream* s, int pos)
         cursorA %= WINDOW_SIZE;
         cursorB %= WINDOW_SIZE;
     }
+    //printf("MATCH END A:0x%04x B:0x%04x\n", cursorA, cursorB);
     return size;
 }
 
@@ -153,6 +160,7 @@ static void findHashMatch(Yaz0Stream* s, uint32_t h, uint32_t* outSize, uint32_t
             if (pos > 0x1000)
                 continue;
             size = matchSize(s, pos);
+            //printf("POS 0x%04x SIZE 0x%04x\n", pos, size);
             if (size > bestSize)
             {
                 bestSize = size;
@@ -160,10 +168,15 @@ static void findHashMatch(Yaz0Stream* s, uint32_t h, uint32_t* outSize, uint32_t
             }
         }
     }
+    //printf("BS 0x%04x\n", bestSize);
     if (bestSize < 3)
     {
         bestSize = 0;
         bestPos = s->window[s->window_start];
+    }
+    else
+    {
+        //printf("O:0x%08x S:0x%04x P:0x%04x\n", s->totalOut, bestSize, bestPos);
     }
     *outSize = bestSize;
     *outPos = bestPos;
@@ -221,7 +234,7 @@ static void compressGroup(Yaz0Stream* s)
     {
         h = hashAt(s, 0);
         findHashMatch(s, h, &size, &pos);
-        hashWrite(s, h);
+        hashWrite(s, h, 0);
         arrSize[groupCount] = size;
         arrPos[groupCount] = pos;
         if (!size)
@@ -231,6 +244,11 @@ static void compressGroup(Yaz0Stream* s)
         }
         else
         {
+            for (uint32_t i = 1; i < size; ++i)
+            {
+                h = hashAt(s, i);
+                hashWrite(s, h, i);
+            }
             s->window_start += size;
             s->totalOut += size;
         }

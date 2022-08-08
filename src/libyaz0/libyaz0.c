@@ -21,12 +21,6 @@ int yaz0Input(Yaz0Stream* stream, const void* data, size_t size)
     stream->sizeIn = size;
     stream->cursorIn = 0;
 
-    for (int i = 0; i < HASH_MAX_ENTRIES; ++i)
-    {
-        stream->htHashes[i]  = 0xffffffff;
-        stream->htEntries[i] = 0xffffffff;
-    }
-
     return YAZ0_OK;
 }
 
@@ -45,6 +39,11 @@ int yaz0_Init(Yaz0Stream** ptr)
     s = calloc(1, sizeof(*s));
     if (!s)
         return YAZ0_OUT_OF_MEMORY;
+    for (int i = 0; i < HASH_MAX_ENTRIES; ++i)
+    {
+        s->htHashes[i]  = 0xffffffff;
+        s->htEntries[i] = 0xffffffff;
+    }
     *ptr = s;
     return YAZ0_OK;
 }

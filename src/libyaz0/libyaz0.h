@@ -4,10 +4,10 @@
 #include <stdint.h>
 #include <yaz0.h>
 
-#define WINDOW_SIZE             0x2000
+#define WINDOW_SIZE             0x8000
 #define FLAG_COMPRESS           (1 << 0)
 #define FLAG_HEADERS_PARSED     (1 << 1)
-#define HASH_MAX_ENTRIES        0x1000
+#define HASH_MAX_ENTRIES        0x4000
 #define HASH_MAX_PROBES         0x20
 
 struct Yaz0Stream
