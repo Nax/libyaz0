@@ -374,22 +374,21 @@ static void compressGroup(Yaz0Stream* s)
     emitGroup(s, groupCount, arrSize, arrPos);
 }
 
-int yaz0InitCompress(Yaz0Stream** ptr, uint32_t size, int level)
+int yaz0ModeCompress(Yaz0Stream* s, uint32_t size, int level)
 {
-    int ret;
-    Yaz0Stream* s;
-
-    ret = yaz0_Init(ptr);
-    if (ret != YAZ0_OK)
-        return ret;
-    s = *ptr;
-    s->flags = FLAG_COMPRESS;
+    memset(s, 0, sizeof(*s));
+    s->mode = MODE_COMPRESS;
     s->decompSize = size;
     if (level < 1)
         level = 1;
     else if (level > 9)
         level = 9;
     s->level = level;
+    for (int i = 0; i < HASH_MAX_ENTRIES; ++i)
+    {
+        s->htHashes[i]  = 0xffffffff;
+        s->htEntries[i] = 0xffffffff;
+    }
     return YAZ0_OK;
 }
 
@@ -399,7 +398,7 @@ int yaz0_RunCompress(Yaz0Stream* stream)
     int ret;
 
     /* Write headers */
-    if (!(stream->flags & FLAG_HEADERS))
+    if (!stream->headersDone)
     {
         if (stream->sizeOut < 16)
             return YAZ0_NEED_AVAIL_OUT;
@@ -410,7 +409,7 @@ int yaz0_RunCompress(Yaz0Stream* stream)
         memcpy(stream->out + 8, &tmp, 4);
         memcpy(stream->out + 12, &tmp, 4);
         stream->cursorOut += 16;
-        stream->flags |= FLAG_HEADERS;
+        stream->headersDone = 1;
     }
 
     /* Compress */

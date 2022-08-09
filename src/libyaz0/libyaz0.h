@@ -4,9 +4,11 @@
 #include <stdint.h>
 #include <yaz0.h>
 
+#define MODE_NONE               0
+#define MODE_DECOMPRESS         1
+#define MODE_COMPRESS           2
+
 #define WINDOW_SIZE             0x4000
-#define FLAG_COMPRESS           (1 << 0)
-#define FLAG_HEADERS            (1 << 1)
 #define HASH_MAX_ENTRIES        0x8000
 #define HASH_REBUILD            0x3000
 
@@ -15,7 +17,8 @@
 
 struct Yaz0Stream
 {
-    int             flags;
+    int             mode;
+    int             headersDone;
     int             level;
     uint32_t        decompSize;
     uint32_t        totalOut;
@@ -37,7 +40,6 @@ struct Yaz0Stream
     uint32_t        htEntries[HASH_MAX_ENTRIES];
 };
 
-int yaz0_Init(Yaz0Stream** stream);
 int yaz0_RunDecompress(Yaz0Stream* stream);
 int yaz0_RunCompress(Yaz0Stream* stream);
 

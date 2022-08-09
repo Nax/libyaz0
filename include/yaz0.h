@@ -20,9 +20,10 @@
 
 typedef struct Yaz0Stream Yaz0Stream;
 
-YAZ0_API int yaz0InitDecompress(Yaz0Stream** stream);
-YAZ0_API int yaz0InitCompress(Yaz0Stream** stream, uint32_t size, int level);
+YAZ0_API int yaz0Init(Yaz0Stream** stream);
 YAZ0_API int yaz0Destroy(Yaz0Stream* stream);
+YAZ0_API int yaz0ModeDecompress(Yaz0Stream* stream);
+YAZ0_API int yaz0ModeCompress(Yaz0Stream* stream, uint32_t size, int level);
 YAZ0_API int yaz0Run(Yaz0Stream* stream);
 YAZ0_API int yaz0Input(Yaz0Stream* stream, const void* data, size_t size);
 YAZ0_API int yaz0Output(Yaz0Stream* stream, void* data, size_t size);

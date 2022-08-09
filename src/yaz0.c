@@ -35,6 +35,12 @@ static int run(const char* inPath, const char* outPath, int compress, int level)
         err = 1;
         goto end;
     }
+    if (yaz0Init(&stream) != YAZ0_OK)
+    {
+        fprintf(stderr, "Could not init libyaz0\n");
+        err = 1;
+        goto end;
+    }
     if (compress)
     {
         fseek(in, 0, SEEK_END);
@@ -46,13 +52,13 @@ static int run(const char* inPath, const char* outPath, int compress, int level)
             err = 1;
             goto end;
         }
-        ret = yaz0InitCompress(&stream, (uint32_t)size, level);
+        ret = yaz0ModeCompress(stream, (uint32_t)size, level);
     }
     else
-        ret = yaz0InitDecompress(&stream);
+        ret = yaz0ModeDecompress(stream);
     if (ret != YAZ0_OK)
     {
-        fprintf(stderr, "Could not init libyaz0\n");
+        fprintf(stderr, "Could not set libyaz0 mode\n");
         err = 1;
         goto end;
     }

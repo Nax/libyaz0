@@ -2,13 +2,10 @@
 #include <stdio.h>
 #include "libyaz0.h"
 
-int yaz0InitDecompress(Yaz0Stream** stream)
+int yaz0ModeDecompress(Yaz0Stream* s)
 {
-    int ret;
-
-    ret = yaz0_Init(stream);
-    if (ret)
-        return ret;
+    memset(s, 0, sizeof(*s));
+    s->mode = MODE_DECOMPRESS;
     return YAZ0_OK;
 }
 
@@ -176,12 +173,12 @@ int yaz0_RunDecompress(Yaz0Stream* stream)
     int ret;
 
     /* Check the headers */
-    if (!(stream->flags & FLAG_HEADERS))
+    if (!stream->headersDone)
     {
         ret = yaz0_ReadHeaders(stream);
         if (ret)
             return ret;
-        stream->flags |= FLAG_HEADERS;
+        stream->headersDone = 1;
     }
 
     if (stream->totalOut < stream->decompSize)
