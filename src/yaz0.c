@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <yaz0.h>
 
 #define BUFSIZE 0x1000
 
-static int run(const char* inPath, const char* outPath, int compress)
+static int run(const char* inPath, const char* outPath, int compress, int level)
 {
     int ret;
     int err;
@@ -45,7 +46,7 @@ static int run(const char* inPath, const char* outPath, int compress)
             err = 1;
             goto end;
         }
-        ret = yaz0InitCompress(&stream, (uint32_t)size);
+        ret = yaz0InitCompress(&stream, (uint32_t)size, level);
     }
     else
         ret = yaz0InitDecompress(&stream);
@@ -109,10 +110,12 @@ int main(int argc, char** argv)
     const char* inFile;
     int compress;
     int autoOutFile;
+    int level;
 
     inFile = NULL;
     compress = 1;
     autoOutFile = 1;
+    level = YAZ0_DEFAULT_LEVEL;
 
     for (int i = 1; i < argc; ++i)
     {
@@ -132,6 +135,16 @@ int main(int argc, char** argv)
                 }
                 strcpy(outFile, argv[i]);
                 autoOutFile = 0;
+            }
+            else if (strcmp(argv[i], "-l") == 0)
+            {
+                i++;
+                if (argc == i || (strlen(argv[i]) == 0))
+                {
+                    fprintf(stderr, "Missing argument for -l\n");
+                    return 1;
+                }
+                level = atoi(argv[i]);
             }
             else
             {
@@ -171,5 +184,5 @@ int main(int argc, char** argv)
                 strcat(outFile, ".out");
         }
     }
-    return run(inFile, outFile, compress);
+    return run(inFile, outFile, compress, level);
 }

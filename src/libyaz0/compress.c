@@ -2,6 +2,19 @@
 #include <stdio.h>
 #include "libyaz0.h"
 
+static const uint32_t kProbesPerLevel[] = {
+    0x0,
+    0x1,
+    0x2,
+    0x4,
+    0x8,
+    0x10,
+    0x40,
+    0x100,
+    0x200,
+    0x1000
+};
+
 static uint32_t hash(uint8_t a, uint8_t b, uint8_t c)
 {
     uint32_t x = (uint32_t)a | ((uint32_t)b << 8) | ((uint32_t)c << 16);
@@ -12,6 +25,7 @@ static uint32_t hash(uint8_t a, uint8_t b, uint8_t c)
 
 static void hashWrite(Yaz0Stream* s, uint32_t h, uint32_t offset)
 {
+    uint32_t maxProbes;
     uint32_t bucket;
     uint32_t tmpBucket;
     uint32_t oldest;
@@ -19,7 +33,8 @@ static void hashWrite(Yaz0Stream* s, uint32_t h, uint32_t offset)
     int32_t pos;
 
     oldest = 0xffffffff;
-    for (int i = 0; i < HASH_MAX_PROBES; ++i)
+    maxProbes = kProbesPerLevel[s->level];
+    for (uint32_t i = 0; i < maxProbes; ++i)
     {
         tmpBucket = (h + i) % HASH_MAX_ENTRIES;
         entry = s->htEntries[tmpBucket];
@@ -180,10 +195,12 @@ static void findHashMatch(Yaz0Stream* s, uint32_t h, uint32_t offset, uint32_t* 
     uint32_t bestPos;
     uint32_t size;
     uint32_t pos;
+    uint32_t maxProbes;
 
     bestSize = 0;
     bestPos = 0;
-    for (int i = 0; i < HASH_MAX_PROBES; ++i)
+    maxProbes = kProbesPerLevel[s->level];
+    for (uint32_t i = 0; i < maxProbes; ++i)
     {
         bucket = (h + i) % HASH_MAX_ENTRIES;
         entry = s->htEntries[bucket];
@@ -357,15 +374,22 @@ static void compressGroup(Yaz0Stream* s)
     emitGroup(s, groupCount, arrSize, arrPos);
 }
 
-int yaz0InitCompress(Yaz0Stream** ptr, uint32_t size)
+int yaz0InitCompress(Yaz0Stream** ptr, uint32_t size, int level)
 {
     int ret;
+    Yaz0Stream* s;
 
     ret = yaz0_Init(ptr);
     if (ret != YAZ0_OK)
         return ret;
-    (*ptr)->flags = FLAG_COMPRESS;
-    (*ptr)->decompSize = size;
+    s = *ptr;
+    s->flags = FLAG_COMPRESS;
+    s->decompSize = size;
+    if (level < 1)
+        level = 1;
+    else if (level > 9)
+        level = 9;
+    s->level = level;
     return YAZ0_OK;
 }
 

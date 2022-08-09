@@ -48,7 +48,12 @@ int yaz0_Init(Yaz0Stream** ptr)
     return YAZ0_OK;
 }
 
-size_t yaz0OutputChunkSize(const Yaz0Stream* stream)
+uint32_t yaz0OutputChunkSize(const Yaz0Stream* stream)
 {
     return stream->cursorOut;
+}
+
+uint32_t yaz0DecompressedSize(const Yaz0Stream* stream)
+{
+    return stream->decompSize;
 }
