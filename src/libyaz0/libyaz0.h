@@ -8,7 +8,7 @@
 #define FLAG_COMPRESS           (1 << 0)
 #define FLAG_HEADERS            (1 << 1)
 #define HASH_MAX_ENTRIES        0x8000
-#define HASH_REBUILD            0x2000
+#define HASH_REBUILD            0x3000
 #define HASH_MAX_PROBES         0x1000
 
 #define likely(x)       (__builtin_expect((x),1))
