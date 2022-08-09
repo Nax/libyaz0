@@ -11,6 +11,9 @@
 #define HASH_REBUILD            0x2000
 #define HASH_MAX_PROBES         0x1000
 
+#define likely(x)       (__builtin_expect((x),1))
+#define unlikely(x)     (__builtin_expect((x),0))
+
 struct Yaz0Stream
 {
     int             flags;

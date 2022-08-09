@@ -6,23 +6,8 @@ static uint32_t hash(uint8_t a, uint8_t b, uint8_t c)
 {
     uint32_t x = (uint32_t)a | ((uint32_t)b << 8) | ((uint32_t)c << 16);
     x = ((x >> 16) ^ x) * 0x45d9f3b;
-    //x = ((x >> 16) ^ x) * 0x45d9f3b;
     x = (x >> 16) ^ x;
     return x;
-}
-
-static uint32_t hashAt(Yaz0Stream* s, uint32_t offset)
-{
-    uint8_t a;
-    uint8_t b;
-    uint8_t c;
-    uint32_t start;
-
-    start = s->window_start + offset;
-    a = s->window[(start + 0) % WINDOW_SIZE];
-    b = s->window[(start + 1) % WINDOW_SIZE];
-    c = s->window[(start + 2) % WINDOW_SIZE];
-    return hash(a, b, c);
 }
 
 static void hashWrite(Yaz0Stream* s, uint32_t h, uint32_t offset)
@@ -31,6 +16,7 @@ static void hashWrite(Yaz0Stream* s, uint32_t h, uint32_t offset)
     uint32_t tmpBucket;
     uint32_t oldest;
     uint32_t entry;
+    int32_t pos;
 
     oldest = 0xffffffff;
     for (int i = 0; i < HASH_MAX_PROBES; ++i)
@@ -38,6 +24,13 @@ static void hashWrite(Yaz0Stream* s, uint32_t h, uint32_t offset)
         tmpBucket = (h + i) % HASH_MAX_ENTRIES;
         entry = s->htEntries[tmpBucket];
         if (entry == 0xffffffff)
+        {
+            s->htSize++;
+            bucket = tmpBucket;
+            break;
+        }
+        pos = s->totalOut - entry;
+        if (pos > 0x1000)
         {
             bucket = tmpBucket;
             break;
@@ -52,7 +45,7 @@ static void hashWrite(Yaz0Stream* s, uint32_t h, uint32_t offset)
     s->htHashes[bucket] = h;
 }
 
-static uint32_t rebuildHashTable(Yaz0Stream* s)
+static void rebuildHashTable(Yaz0Stream* s)
 {
     uint32_t newEntries[HASH_MAX_ENTRIES];
     uint32_t newHashes[HASH_MAX_ENTRIES];
@@ -91,10 +84,9 @@ static uint32_t rebuildHashTable(Yaz0Stream* s)
         }
     }
 
+    s->htSize = size;
     memcpy(s->htEntries, newEntries, sizeof(newEntries));
     memcpy(s->htHashes, newHashes, sizeof(newHashes));
-
-    return size;
 }
 
 static uint32_t maxSize(Yaz0Stream* stream)
@@ -300,10 +292,18 @@ static void compressGroup(Yaz0Stream* s)
     uint32_t nextPos;
     uint32_t arrSize[8];
     uint32_t arrPos[8];
+    uint8_t a;
+    uint8_t b;
+    uint8_t c;
+    uint8_t d;
 
     for (groupCount = 0; groupCount < 8; ++groupCount)
     {
-        h = hashAt(s, 0);
+        a = s->window[s->window_start];
+        b = s->window[(s->window_start + 1) % WINDOW_SIZE];
+        c = s->window[(s->window_start + 2) % WINDOW_SIZE];
+        d = s->window[(s->window_start + 3) % WINDOW_SIZE];
+        h = hash(a, b, c);
         findHashMatch(s, h, 0, &size, &pos);
         hashWrite(s, h, 0);
 
@@ -320,7 +320,7 @@ static void compressGroup(Yaz0Stream* s)
 
         nextSize = 0;
         nextPos = 0;
-        h = hashAt(s, 1);
+        h = hash(b, c, d);
         findHashMatch(s, h, 1, &nextSize, &nextPos);
 
         if (!size || nextSize > size)
@@ -329,7 +329,6 @@ static void compressGroup(Yaz0Stream* s)
             arrPos[groupCount] = s->window[s->window_start];
             s->window_start += 1;
             s->totalOut += 1;
-            s->htSize++;
         }
         else
         {
@@ -337,12 +336,14 @@ static void compressGroup(Yaz0Stream* s)
             arrPos[groupCount] = pos;
             for (uint32_t i = 1; i < size; ++i)
             {
-                h = hashAt(s, i);
+                a = b;
+                b = c;
+                c = s->window[(s->window_start + 2 + i) % WINDOW_SIZE];
+                h = hash(a, b, c);
                 hashWrite(s, h, i);
             }
             s->window_start += size;
             s->totalOut += size;
-            s->htSize += size;
         }
         s->window_start %= WINDOW_SIZE;
         if (s->totalOut >= s->decompSize)
@@ -352,9 +353,7 @@ static void compressGroup(Yaz0Stream* s)
         }
     }
     if (s->htSize > HASH_REBUILD)
-    {
-        s->htSize = rebuildHashTable(s);
-    }
+        rebuildHashTable(s);
     emitGroup(s, groupCount, arrSize, arrPos);
 }
 
