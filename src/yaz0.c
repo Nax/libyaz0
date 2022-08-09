@@ -10,6 +10,7 @@ static int run(const char* inPath, const char* outPath, int compress, int level)
     int ret;
     int err;
     size_t size;
+    off_t off;
     FILE* in;
     FILE* out;
     Yaz0Stream* stream;
@@ -44,15 +45,15 @@ static int run(const char* inPath, const char* outPath, int compress, int level)
     if (compress)
     {
         fseek(in, 0, SEEK_END);
-        size = ftell(in);
+        off = ftell(in);
         fseek(in, 0, SEEK_SET);
-        if (size > 0xffffffff)
+        if (off > 0xffffffff)
         {
             fprintf(stderr, "%s: file too large\n", inPath);
             err = 1;
             goto end;
         }
-        ret = yaz0ModeCompress(stream, (uint32_t)size, level);
+        ret = yaz0ModeCompress(stream, (uint32_t)off, level);
     }
     else
         ret = yaz0ModeDecompress(stream);
@@ -64,7 +65,7 @@ static int run(const char* inPath, const char* outPath, int compress, int level)
     }
     yaz0Output(stream, bufferOut, BUFSIZE);
     size = fread(bufferIn, 1, BUFSIZE, in);
-    yaz0Input(stream, bufferIn, size);
+    yaz0Input(stream, bufferIn, (uint32_t)size);
     for (;;)
     {
         ret = yaz0Run(stream);
@@ -85,7 +86,7 @@ static int run(const char* inPath, const char* outPath, int compress, int level)
                 err = 1;
                 goto end;
             }
-            yaz0Input(stream, bufferIn, size);
+            yaz0Input(stream, bufferIn, (uint32_t)size);
             break;
         case YAZ0_NEED_AVAIL_OUT:
             fwrite(bufferOut, yaz0OutputChunkSize(stream), 1, out);

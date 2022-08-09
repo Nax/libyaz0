@@ -44,7 +44,7 @@ static void hashWrite(Yaz0Stream* s, uint32_t h, uint32_t offset)
             bucket = tmpBucket;
             break;
         }
-        pos = s->totalOut - entry;
+        pos = (int32_t)(s->totalOut - entry);
         if (pos > 0x1000)
         {
             bucket = tmpBucket;
@@ -113,7 +113,7 @@ static uint32_t maxSize(Yaz0Stream* stream)
     max = stream->decompSize - stream->totalOut;
     if (max > maxNecessary)
         max = maxNecessary;
-    return (int)max;
+    return max;
 }
 
 /* start: start of avail data */
@@ -160,7 +160,7 @@ static int feed(Yaz0Stream* s)
     return ret;
 }
 
-static int matchSize(Yaz0Stream* s, uint32_t offset, uint32_t pos, uint32_t hintSize)
+static uint32_t matchSize(Yaz0Stream* s, uint32_t offset, uint32_t pos, uint32_t hintSize)
 {
     uint32_t size = 0;
     uint32_t start = s->window_start + offset;
@@ -263,8 +263,8 @@ static void findEarlyZeroes(Yaz0Stream* s, uint32_t* outSize, uint32_t* outPos)
 static void emitGroup(Yaz0Stream* s, int count, const uint32_t* arrSize, const uint32_t* arrPos)
 {
     uint8_t header;
-    int size;
-    int pos;
+    uint32_t size;
+    uint32_t pos;
 
     header = 0;
     for (int i = 0; i < count; ++i)
@@ -292,7 +292,7 @@ static void emitGroup(Yaz0Stream* s, int count, const uint32_t* arrSize, const u
             else
             {
                 /* 2 bytes */
-                s->out[s->cursorOut++] = (uint8_t)(pos >> 8) | ((size - 2) << 4);
+                s->out[s->cursorOut++] = (uint8_t)(pos >> 8) | (uint8_t)((size - 2) << 4);
                 s->out[s->cursorOut++] = (uint8_t)pos;
             }
         }

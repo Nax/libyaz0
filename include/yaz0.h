@@ -25,8 +25,8 @@ YAZ0_API int yaz0Destroy(Yaz0Stream* stream);
 YAZ0_API int yaz0ModeDecompress(Yaz0Stream* stream);
 YAZ0_API int yaz0ModeCompress(Yaz0Stream* stream, uint32_t size, int level);
 YAZ0_API int yaz0Run(Yaz0Stream* stream);
-YAZ0_API int yaz0Input(Yaz0Stream* stream, const void* data, size_t size);
-YAZ0_API int yaz0Output(Yaz0Stream* stream, void* data, size_t size);
+YAZ0_API int yaz0Input(Yaz0Stream* stream, const void* data, uint32_t size);
+YAZ0_API int yaz0Output(Yaz0Stream* stream, void* data, uint32_t size);
 
 YAZ0_API uint32_t yaz0OutputChunkSize(const Yaz0Stream* stream);
 YAZ0_API uint32_t yaz0DecompressedSize(const Yaz0Stream* stream);

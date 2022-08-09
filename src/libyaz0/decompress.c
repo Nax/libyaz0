@@ -86,11 +86,11 @@ static int ensureWindowFree(Yaz0Stream* stream)
 
 int yaz0_DoDecompress(Yaz0Stream* stream)
 {
-    uint8_t groupBit;
-    char    byte;
-    int     ret;
-    int     n;
-    int     r;
+    uint8_t     groupBit;
+    uint8_t     byte;
+    int         ret;
+    uint16_t    n;
+    uint16_t    r;
     for (;;)
     {
         /* No group and no EOF - We need to read */
@@ -147,7 +147,7 @@ int yaz0_DoDecompress(Yaz0Stream* stream)
                     /* We have a small chunk */
                     n = ((uint8_t)stream->auxBuf[0] >> 4) + 2;
                 }
-                r = ((uint16_t)((uint8_t)stream->auxBuf[0] & 0x0f) << 8) | ((uint8_t)stream->auxBuf[1]);
+                r = ((uint16_t)(((uint8_t)stream->auxBuf[0] & 0x0f) << 8) | ((uint8_t)stream->auxBuf[1]));
                 r++;
                 /* Reset the aux buffer */
                 uint32_t cursor = (stream->window_end + WINDOW_SIZE - r) % WINDOW_SIZE;

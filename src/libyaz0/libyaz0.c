@@ -31,10 +31,12 @@ int yaz0Run(Yaz0Stream* s)
         return yaz0_RunDecompress(s);
     case MODE_COMPRESS:
         return yaz0_RunCompress(s);
+    default:
+        unreachable();
     }
 }
 
-int yaz0Input(Yaz0Stream* stream, const void* data, size_t size)
+int yaz0Input(Yaz0Stream* stream, const void* data, uint32_t size)
 {
     stream->in = data;
     stream->sizeIn = size;
@@ -43,7 +45,7 @@ int yaz0Input(Yaz0Stream* stream, const void* data, size_t size)
     return YAZ0_OK;
 }
 
-int yaz0Output(Yaz0Stream* stream, void* data, size_t size)
+int yaz0Output(Yaz0Stream* stream, void* data, uint32_t size)
 {
     stream->out = data;
     stream->sizeOut = size;
