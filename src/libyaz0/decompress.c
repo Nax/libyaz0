@@ -75,10 +75,10 @@ static int ensureWindowFree(Yaz0Stream* stream)
 {
     static const uint32_t maxSize = 0x111 * 8;
 
-    if (windowFreeSize(stream) < maxSize)
+    if (windowFreeSize(stream) <= maxSize)
     {
         flush(stream);
-        if (windowFreeSize(stream) < maxSize)
+        if (windowFreeSize(stream) <= maxSize)
             return YAZ0_NEED_AVAIL_OUT;
     }
     return YAZ0_OK;

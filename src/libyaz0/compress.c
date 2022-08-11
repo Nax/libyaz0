@@ -231,35 +231,6 @@ static void findHashMatch(Yaz0Stream* s, uint32_t h, uint32_t offset, uint32_t* 
     }
 }
 
-static void findEarlyZeroes(Yaz0Stream* s, uint32_t* outSize, uint32_t* outPos)
-{
-    uint32_t size;
-    uint32_t bestSize;
-    uint32_t bestPos;
-
-    bestSize = 0;
-    bestPos = 0;
-    for (uint32_t pos = 0x1000; pos > 0x990; --pos)
-    {
-        size = matchSize(s, 0, pos, 0);
-        if (size > bestSize)
-        {
-            bestSize = size;
-            bestPos = pos;
-        }
-    }
-
-    if (bestSize < 3)
-    {
-        *outSize = 0;
-    }
-    else
-    {
-        *outSize = bestSize;
-        *outPos = bestPos;
-    }
-}
-
 static void emitGroup(Yaz0Stream* s, int count, const uint32_t* arrSize, const uint32_t* arrPos)
 {
     uint8_t header;
@@ -324,19 +295,6 @@ static void compressGroup(Yaz0Stream* s)
         findHashMatch(s, h, 0, &size, &pos);
         hashWrite(s, h, 0);
 
-        /* Check for early zero */
-        if (s->window[s->window_start] == 0 && s->totalOut < 0x1000)
-        {
-            findEarlyZeroes(s, &nextSize, &nextPos);
-            if (nextSize > size)
-            {
-                size = nextSize;
-                pos = nextPos;
-            }
-        }
-
-        nextSize = 0;
-        nextPos = 0;
         h = hash(b, c, d);
         findHashMatch(s, h, 1, &nextSize, &nextPos);
 
