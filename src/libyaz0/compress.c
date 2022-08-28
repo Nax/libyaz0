@@ -56,8 +56,12 @@ static void hashWrite(Yaz0Stream* s, uint32_t h, uint32_t offset)
             bucket = tmpBucket;
         }
     }
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
     s->htEntries[bucket] = s->totalOut + offset;
     s->htHashes[bucket] = h;
+#pragma GCC diagnostic pop
 }
 
 static void rebuildHashTable(Yaz0Stream* s)
