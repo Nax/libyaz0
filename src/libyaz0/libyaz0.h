@@ -4,6 +4,16 @@
 #include <stdint.h>
 #include <yaz0.h>
 
+#if defined(__GNUC__)
+# define likely(x)       (__builtin_expect((x),1))
+# define unlikely(x)     (__builtin_expect((x),0))
+# define unreachable()   __builtin_unreachable()
+#else
+# define likely(x)      (x)
+# define unlikely(x)    (x)
+# define unreachable()  do {} while (0)
+#endif
+
 #define MODE_NONE               0
 #define MODE_DECOMPRESS         1
 #define MODE_COMPRESS           2
@@ -11,10 +21,6 @@
 #define WINDOW_SIZE             0x4000
 #define HASH_MAX_ENTRIES        0x8000
 #define HASH_REBUILD            0x3000
-
-#define likely(x)       (__builtin_expect((x),1))
-#define unlikely(x)     (__builtin_expect((x),0))
-#define unreachable()   __builtin_unreachable()
 
 struct Yaz0Stream
 {
