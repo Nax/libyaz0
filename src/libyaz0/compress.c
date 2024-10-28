@@ -66,18 +66,16 @@ static void hashWrite(Yaz0Stream* s, uint32_t h, uint32_t offset)
 
 static void rebuildHashTable(Yaz0Stream* s)
 {
-    uint32_t newEntries[HASH_MAX_ENTRIES];
-    uint32_t newHashes[HASH_MAX_ENTRIES];
     uint32_t entry;
     uint32_t pos;
     uint32_t h;
     uint32_t bucket;
     uint32_t size;
 
-    memset(newEntries, 0xff, sizeof(newEntries));
-    memset(newHashes, 0xff, sizeof(newHashes));
-    size = 0;
+    puts("Hash table rebuild");
 
+    /* First pass - delete old entries */
+    size = s->htSize;
     for (uint32_t i = 0; i < HASH_MAX_ENTRIES; ++i)
     {
         entry = s->htEntries[i];
@@ -85,27 +83,36 @@ static void rebuildHashTable(Yaz0Stream* s)
             continue;
         pos = s->totalOut - entry;
         if (pos > 0x1000)
-            continue;
-
-        /* Entry still good - move to the table */
-        h = s->htHashes[i];
-        bucket = h % HASH_MAX_ENTRIES;
-        for (;;)
         {
-            if (newEntries[bucket] == 0xffffffff)
-            {
-                newEntries[bucket] = entry;
-                newHashes[bucket] = h;
-                size++;
-                break;
-            }
-            bucket = (bucket + 1) % HASH_MAX_ENTRIES;
+            s->htEntries[i] = 0xffffffff;
+            size--;
         }
     }
-
     s->htSize = size;
-    memcpy(s->htEntries, newEntries, sizeof(newEntries));
-    memcpy(s->htHashes, newHashes, sizeof(newHashes));
+
+    /* Second pass - move */
+    for (uint32_t i = 0; i < HASH_MAX_ENTRIES; ++i)
+    {
+        entry = s->htEntries[i];
+        if (entry == 0xffffffff)
+            continue;
+
+        /* Entry still good - might need to move */
+        h = s->htHashes[i];
+        bucket = h % HASH_MAX_ENTRIES;
+        while (bucket != i)
+        {
+            if (s->htEntries[bucket] != 0xffffffff)
+            {
+                bucket = (bucket + 1) % HASH_MAX_ENTRIES;
+                continue;
+            }
+            s->htEntries[bucket] = entry;
+            s->htHashes[bucket] = h;
+            s->htEntries[i] = 0xffffffff;
+            break;
+        }
+    }
 }
 
 static uint32_t maxSize(Yaz0Stream* stream)
