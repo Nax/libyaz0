@@ -72,8 +72,6 @@ static void rebuildHashTable(Yaz0Stream* s)
     uint32_t bucket;
     uint32_t size;
 
-    puts("Hash table rebuild");
-
     /* First pass - delete old entries */
     size = s->htSize;
     for (uint32_t i = 0; i < HASH_MAX_ENTRIES; ++i)
